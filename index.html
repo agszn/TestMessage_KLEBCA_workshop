@@ -1,96 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Network Chat</title>
+    <title>Simple P2P Chat</title>
     <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            margin-top: 80px;
-            background: #f2f2f2;
-        }
-
-        .box {
-            background: white;
-            padding: 20px;
-            width: 300px;
-            margin: auto;
-            border-radius: 10px;
-        }
-
-        input {
-            padding: 10px;
-            width: 90%;
-        }
-
-        button {
-            padding: 10px;
-            margin-top: 10px;
-            width: 100%;
-            background: green;
-            color: white;
-            border: none;
-        }
-
-        #messages {
-            margin-top: 20px;
-            text-align: left;
-            height: 150px;
-            overflow-y: auto;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
-        }
+        body { font-family: Arial; text-align:center; margin-top:40px; }
+        textarea { width: 90%; height: 80px; }
+        input { padding: 10px; width: 200px; }
+        button { padding: 10px; margin: 5px; }
+        #chat { margin-top:20px; border:1px solid #ccc; height:150px; overflow:auto; padding:10px; }
     </style>
 </head>
 
 <body>
 
-<div class="box">
-    <h2>🌐 Simple Chat</h2>
+<h2>🔗 Simple Browser-to-Browser Chat</h2>
 
-    <input id="msg" placeholder="Type message">
-    <button onclick="send()">Send</button>
+<button onclick="createOffer()">1. Create Code</button>
+<textarea id="offer" placeholder="Share this code"></textarea>
 
-    <div id="messages"></div>
-</div>
+<button onclick="connect()">2. Connect</button>
+<textarea id="answer" placeholder="Paste other system code"></textarea>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<hr>
+
+<input id="msg" placeholder="Type message">
+<button onclick="send()">Send</button>
+
+<div id="chat"></div>
 
 <script>
-// 🔥 YOUR FIREBASE CONFIG (replace this)
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-    projectId: "YOUR_PROJECT",
+let pc = new RTCPeerConnection();
+let dc = pc.createDataChannel("chat");
+
+// show received messages
+dc.onmessage = e => {
+    addMsg("📩 " + e.data);
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+pc.onicecandidate = e => {
+    if (!e.candidate) {
+        document.getElementById("offer").value =
+            JSON.stringify(pc.localDescription);
+    }
+};
 
-// 📤 SEND MESSAGE
-function send() {
-    const message = document.getElementById("msg").value;
-
-    db.ref("chat").push({
-        text: message,
-        time: Date.now()
-    });
-
-    document.getElementById("msg").value = "";
+function createOffer() {
+    pc.createOffer().then(o => pc.setLocalDescription(o));
 }
 
-// 📥 RECEIVE MESSAGE (REAL-TIME)
-db.ref("chat").on("child_added", snapshot => {
-    const data = snapshot.val();
+function connect() {
+    const data = JSON.parse(document.getElementById("answer").value);
 
+    pc.setRemoteDescription(data);
+
+    if (data.type === "offer") {
+        pc.ondatachannel = e => {
+            dc = e.channel;
+            dc.onmessage = ev => addMsg("📩 " + ev.data);
+        };
+
+        pc.createAnswer().then(a => {
+            pc.setLocalDescription(a);
+        });
+
+        pc.onicecandidate = e => {
+            if (!e.candidate) {
+                document.getElementById("offer").value =
+                    JSON.stringify(pc.localDescription);
+            }
+        };
+    }
+}
+
+function send() {
+    const msg = document.getElementById("msg").value;
+    dc.send(msg);
+    addMsg("📤 " + msg);
+}
+
+function addMsg(text) {
     const div = document.createElement("div");
-    div.innerText = "📩 " + data.text;
-
-    document.getElementById("messages").appendChild(div);
-});
+    div.innerText = text;
+    document.getElementById("chat").appendChild(div);
+}
 </script>
 
 </body>
