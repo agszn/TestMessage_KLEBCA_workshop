@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Network Chat</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin-top: 80px;
+            background: #f2f2f2;
+        }
+
+        .box {
+            background: white;
+            padding: 20px;
+            width: 300px;
+            margin: auto;
+            border-radius: 10px;
+        }
+
+        input {
+            padding: 10px;
+            width: 90%;
+        }
+
+        button {
+            padding: 10px;
+            margin-top: 10px;
+            width: 100%;
+            background: green;
+            color: white;
+            border: none;
+        }
+
+        #messages {
+            margin-top: 20px;
+            text-align: left;
+            height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+    <h2>🌐 Simple Chat</h2>
+
+    <input id="msg" placeholder="Type message">
+    <button onclick="send()">Send</button>
+
+    <div id="messages"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+// 🔥 YOUR FIREBASE CONFIG (replace this)
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// 📤 SEND MESSAGE
+function send() {
+    const message = document.getElementById("msg").value;
+
+    db.ref("chat").push({
+        text: message,
+        time: Date.now()
+    });
+
+    document.getElementById("msg").value = "";
+}
+
+// 📥 RECEIVE MESSAGE (REAL-TIME)
+db.ref("chat").on("child_added", snapshot => {
+    const data = snapshot.val();
+
+    const div = document.createElement("div");
+    div.innerText = "📩 " + data.text;
+
+    document.getElementById("messages").appendChild(div);
+});
+</script>
+
+</body>
+</html>
